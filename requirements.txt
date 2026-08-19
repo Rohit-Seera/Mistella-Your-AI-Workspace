@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+pydantic
+python-dotenv
+python-multipart
+langchain
+langgraph
+langchain-google-genai
+langchain-groq
+langchain-community
+faiss-cpu
+rank-bm25
+sentence-transformers
+tavily-python
+pypdf
