@@ -1,0 +1,24 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+build/
+
+# Local environment
+.env
+
+# Local runtime data
+*.db
+uploads/
+data/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
