@@ -1,16 +1,16 @@
 # Mistella — The Intelligent AI
 
-Mistella is an agentic, multimodal AI workspace built as a practical Generative AI engineering project. It combines conversational AI, LangGraph workflows, document intelligence, hybrid RAG, web research, image understanding, and persistent conversations behind a dedicated web interface.
+Mistella is an agentic multimodal AI workspace built to combine everyday chat, web research, document question-answering, image understanding, and persistent conversations in one interface.
 
-## What it can do
+## What it does
 
-- **Chat** — normal LLM-powered conversations with persistent threads.
-- **Research** — research-oriented workflows with web search and LLM synthesis.
-- **Documents** — upload PDFs and ask questions over indexed content.
-- **Hybrid RAG** — combines semantic/vector retrieval with lexical retrieval before reranking.
-- **Multimodal input** — upload images for visual understanding.
-- **Conversation history** — reopen and delete previous chats.
-- **Streaming responses** — responses are streamed to the UI instead of waiting for the complete answer.
+- General conversational chat with streaming responses
+- Web research workflow for current information
+- PDF upload and retrieval-augmented question answering
+- Hybrid retrieval with vector search + BM25 and reranking
+- Image uploads for multimodal requests
+- Persistent chat threads with titles and deletion
+- React frontend backed by FastAPI and LangGraph
 
 ## Architecture
 
@@ -22,56 +22,49 @@ FastAPI API
       │
       ▼
 LangGraph Workflow
-   ┌──┼───────────────┐
-   │  │               │
- Chat RAG          Research
-   │  │               │
-   │  ├─ FAISS        └─ Web Search
-   │  ├─ BM25             │
-   │  └─ Reranking        ▼
-   │                 LLM synthesis
-   └────────┬───────────────┘
-            ▼
-      Persistent threads
+ ┌────┼───────────┐
+ ▼    ▼           ▼
+Chat  RAG      Research
+ │    │           │
+LLM  FAISS/BM25  Web Search
+ │    │           │
+ └────┴───────────┘
+          │
+          ▼
+    Persistent state
 ```
 
 ## Tech stack
 
-**Backend:** Python, FastAPI, LangChain, LangGraph  
-**Generative AI:** Gemini / Groq (configured through environment variables)  
-**RAG:** FAISS, BM25, reranking  
-**Research:** Tavily  
-**Frontend:** Vite-based web frontend  
-**Storage:** SQLite / LangGraph checkpointing
+Python · FastAPI · React · LangChain · LangGraph · FAISS · BM25 · Sentence Transformers · Tavily · Gemini/Groq
 
 ## Local setup
 
-### 1. Configure environment
+Create a local `.env` from `.env.example` and add your API keys.
 
-Copy `.env.example` to `.env` and add your own API keys. **Never commit `.env`.**
+### Backend
 
-### 2. Start the backend
-
-```bash
+```powershell
 uv venv
+.venv\Scripts\Activate.ps1
 uv pip install -r requirements.txt
 uv run python -m uvicorn backend.main:app --reload --port 8000
 ```
 
-### 3. Start the frontend
+### Frontend
 
-```bash
+```powershell
 cd frontend
 npm install
 npm run dev
 ```
 
-Then open the local Vite URL shown in the terminal.
+Open the Vite URL shown in the terminal.
 
 ## Environment
 
-The repository intentionally contains only `.env.example`. API keys stay local and are excluded by `.gitignore`.
+Never commit `.env`. Use `.env.example` only as the template for required variables.
 
 ## Project status
 
-Mistella is being developed incrementally as an AI-engineering project. The repository history reflects the progression from the API layer to the integrated workspace, with further improvements planned around provider abstraction, retrieval evaluation, agent tooling, and production deployment.
+Mistella is under active development. The repository is kept runnable locally while LLM provider support, retrieval quality, UI performance, and deployment are iterated.

@@ -1,7 +1,7 @@
-import base64
 import json
 import os
 import shutil
+import base64
 import uuid
 from pathlib import Path
 
@@ -37,10 +37,6 @@ class ChatRequest(BaseModel):
     media_paths: list[str] = []
 
 
-class IndexRequest(BaseModel):
-    paths: list[str]
-
-
 def message_to_dict(message):
     content = getattr(message, "content", "")
     role = "assistant" if message.__class__.__name__ == "AIMessage" else "user"
@@ -52,7 +48,7 @@ def health():
     rag = get_rag()
     return {
         "status": "ok",
-        "model": os.getenv("LLM_PROVIDER", "gemini"),
+        "model": os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
         "rag_ready": rag.ready,
         "chunks": len(rag.chunks),
     }
@@ -82,6 +78,7 @@ def thread(thread_id: str):
     }
 
 
+
 def build_user_content(message: str, media_paths: list[str]):
     if not media_paths:
         return message
@@ -90,6 +87,7 @@ def build_user_content(message: str, media_paths: list[str]):
 
     for path in media_paths[:4]:
         file_path = Path(path)
+
         if not file_path.exists():
             continue
 
@@ -108,7 +106,9 @@ def build_user_content(message: str, media_paths: list[str]):
         content.append(
             {
                 "type": "image_url",
-                "image_url": {"url": f"data:{mime};base64,{encoded}"},
+                "image_url": {
+                    "url": f"data:{mime};base64,{encoded}"
+                },
             }
         )
 
@@ -125,7 +125,10 @@ def chat(request: ChatRequest):
             {
                 "message": [
                     HumanMessage(
-                        content=build_user_content(request.message, request.media_paths)
+                        content=build_user_content(
+                            request.message,
+                            request.media_paths,
+                        )
                     )
                 ],
                 "context": "",
@@ -137,7 +140,7 @@ def chat(request: ChatRequest):
         answer = messages[-1].content if messages else ""
         return {"thread_id": request.thread_id, "answer": answer}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.post("/api/chat/stream")
@@ -150,10 +153,13 @@ def chat_stream(request: ChatRequest):
             for chunk, _metadata in workflow.stream(
                 {
                     "message": [
-                        HumanMessage(
-                            content=build_user_content(request.message, request.media_paths)
+                    HumanMessage(
+                        content=build_user_content(
+                            request.message,
+                            request.media_paths,
                         )
-                    ],
+                    )
+                ],
                     "context": "",
                     "mode": request.mode,
                 },
@@ -179,10 +185,16 @@ def chat_stream(request: ChatRequest):
     )
 
 
+
 @app.post("/api/media/upload")
 async def upload_media(files: list[UploadFile] = File(...)):
     saved = []
-    allowed = {"image/png", "image/jpeg", "image/webp"}
+
+    allowed = {
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+    }
 
     for file in files:
         if not file.filename or file.content_type not in allowed:
@@ -190,33 +202,48 @@ async def upload_media(files: list[UploadFile] = File(...)):
 
         safe_name = Path(file.filename).name
         target = MEDIA_DIR / f"{uuid.uuid4().hex[:8]}_{safe_name}"
+
         with target.open("wb") as output:
             shutil.copyfileobj(file.file, output)
+
         saved.append(str(target))
 
     if not saved:
-        raise HTTPException(status_code=400, detail="Please upload PNG, JPG, JPEG, or WEBP images.")
+        raise HTTPException(
+            status_code=400,
+            detail="Please upload PNG, JPG, JPEG, or WEBP images.",
+        )
 
-    return {"files": [Path(path).name for path in saved], "paths": saved}
+    return {
+        "files": [Path(path).name for path in saved],
+        "paths": saved,
+    }
 
 
 @app.post("/api/documents/upload")
 async def upload_documents(files: list[UploadFile] = File(...)):
     saved = []
+
     for file in files:
         if not file.filename or not file.filename.lower().endswith(".pdf"):
             continue
 
         safe_name = Path(file.filename).name
         target = UPLOAD_DIR / f"{uuid.uuid4().hex[:8]}_{safe_name}"
+
         with target.open("wb") as output:
             shutil.copyfileobj(file.file, output)
+
         saved.append(str(target))
 
     if not saved:
         raise HTTPException(status_code=400, detail="Please upload at least one PDF.")
 
     return {"files": [Path(path).name for path in saved], "paths": saved}
+
+
+class IndexRequest(BaseModel):
+    paths: list[str]
 
 
 @app.post("/api/documents/index")
@@ -230,17 +257,46 @@ def index_documents(request: IndexRequest):
     if not valid_paths:
         raise HTTPException(status_code=400, detail="No valid PDFs found.")
 
-    rag = get_rag()
     try:
-        count = rag.index_documents(valid_paths)
+        added = get_rag().load_pdfs(valid_paths)
+        return {
+            "added_chunks": added,
+            "total_chunks": len(get_rag().chunks),
+        }
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    return {"status": "indexed", "chunks": count}
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.get("/api/documents")
 def documents():
-    files = sorted(p.name for p in UPLOAD_DIR.glob("*.pdf"))
     rag = get_rag()
-    return {"files": files, "chunks": len(rag.chunks), "ready": rag.ready}
+    grouped = {}
+
+    for item in rag.chunks:
+        source = item.get("source", "unknown")
+        grouped.setdefault(source, {"name": source, "chunks": 0, "pages": set()})
+        grouped[source]["chunks"] += 1
+        if item.get("page") is not None:
+            grouped[source]["pages"].add(item["page"])
+
+    docs = []
+    for item in grouped.values():
+        docs.append(
+            {
+                "name": item["name"],
+                "chunks": item["chunks"],
+                "pages": len(item["pages"]),
+            }
+        )
+
+    return {
+        "ready": rag.ready,
+        "chunks": len(rag.chunks),
+        "documents": sorted(docs, key=lambda x: x["name"].lower()),
+    }
+
+
+@app.post("/api/documents/clear")
+def clear_documents():
+    get_rag().clear()
+    return {"status": "cleared"}

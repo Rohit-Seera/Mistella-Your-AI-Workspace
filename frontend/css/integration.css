@@ -1,0 +1,18 @@
+
+/* Backend-integrated UI */
+.msg-content-wrap{min-width:0;max-width:min(760px,82vw);}
+.msg-bubble p{margin:0 0 10px;}
+.msg-bubble p:last-child{margin-bottom:0;}
+.msg-bubble h1,.msg-bubble h2,.msg-bubble h3{margin:12px 0 8px;color:var(--text-primary);}
+.msg-bubble ul{margin:7px 0 10px;padding-left:20px;}
+.msg-bubble li{margin:4px 0;}
+.msg-bubble code{padding:2px 5px;border-radius:4px;background:rgba(255,255,255,.07);color:#c9b8ff;}
+.msg-bubble pre{padding:11px;overflow:auto;border-radius:9px;background:rgba(0,0,0,.28);border:1px solid var(--panel-border);}
+.msg-bubble pre code{padding:0;background:transparent;}
+.msg-attachments{display:flex;gap:7px;margin:0 0 7px;}
+.msg-attachments img{width:110px;height:110px;object-fit:cover;border-radius:10px;border:1px solid var(--panel-border);}
+.error-bubble{color:#ffadb8;border-color:rgba(251,113,133,.23);}
+#chatThread.is-visible{padding-bottom:20px;}
+@media (max-width:1180px){
+  .msg-content-wrap{max-width:78vw;}
+}
